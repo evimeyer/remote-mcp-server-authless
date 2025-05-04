@@ -17,6 +17,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.7.0",
     "agents": "^0.0.65",
+    "axios": "^1.6.7",
     "zod": "^3.24.2"
   }
 }
