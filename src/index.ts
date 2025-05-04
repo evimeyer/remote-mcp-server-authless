@@ -99,7 +99,8 @@ export class MyMCP extends McpAgent {
                     "adgroups", 
                     "keywords", 
                     "searchterms", 
-                    "reports"
+                    "reports",
+                    "certificateStatus" // Added to check API connection and certificate status
                 ]),
                 orgId: z.string(),
                 limit: z.number().optional(),
@@ -131,31 +132,94 @@ export class MyMCP extends McpAgent {
                 auth: AppleSearchAdsAuth;
             }) => {
                 try {
+                    // Special endpoint to check certificate status
+                    if (endpoint === "certificateStatus") {
+                        try {
+                            const token = generateJWT(auth);
+                            const response = await axios.get("https://api.searchads.apple.com/api/v4/acls", {
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json',
+                                }
+                            });
+                            return {
+                                content: [{ 
+                                    type: "text", 
+                                    text: JSON.stringify({
+                                        status: "Certificate is valid",
+                                        message: "Successfully authenticated with Apple Search Ads API",
+                                        data: response.data
+                                    }, null, 2)
+                                }]
+                            };
+                        } catch (error: unknown) {
+                            const errorMessage = error instanceof Error ? error.message : String(error);
+                            const axiosError = error as any;
+                            return {
+                                content: [{ 
+                                    type: "text", 
+                                    text: JSON.stringify({
+                                        status: "Certificate validation failed",
+                                        message: errorMessage,
+                                        statusCode: axiosError?.response?.status,
+                                        responseData: axiosError?.response?.data
+                                    }, null, 2)
+                                }]
+                            };
+                        }
+                    }
+                    
                     // Generate JWT token for auth
                     const token = generateJWT(auth);
                     
-                    // Build API URL based on endpoint
-                    let apiUrl = `https://api.searchads.apple.com/api/v4/${endpoint}`;
+                    // Apple Search Ads API Base URL - using v4 which is the current version as of 2023-2024
+                    const apiBaseUrl = "https://api.searchads.apple.com/api/v4";
                     
-                    // Add query parameters
-                    const params: Record<string, any> = {
-                        limit,
-                        orgId,
+                    // Map endpoints to actual API paths
+                    const apiEndpointMap: Record<string, string> = {
+                        "campaigns": "/campaigns",
+                        "adgroups": "/campaigns/adgroups",
+                        "keywords": "/campaigns/adgroups/keywords",
+                        "searchterms": "/reports/campaigns/searchterms",
+                        "reports": "/reports/campaigns"
                     };
                     
-                    if (startDate) params.startDate = startDate;
-                    if (endDate) params.endDate = endDate;
+                    // Build API URL based on endpoint
+                    const apiPath = apiEndpointMap[endpoint] || `/${endpoint}`;
+                    const apiUrl = `${apiBaseUrl}${apiPath}`;
                     
-                    // Make request to Apple Search Ads API
-                    const response = await axios.get<AppleSearchAdsResponse>(apiUrl, {
+                    // Add query parameters
+                    const params: Record<string, any> = {};
+                    
+                    if (limit) params.limit = limit;
+                    if (startDate) params.startTime = startDate;
+                    if (endDate) params.endTime = endDate;
+                    
+                    console.log(`Making request to: ${apiUrl}`);
+                    
+                    // Make request to Apple Search Ads API with correct headers
+                    const headers: Record<string, string> = {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    };
+                    
+                    // Add org context header only if orgId is provided
+                    if (orgId) {
+                        headers['X-AP-Context'] = `orgId=${orgId}`;
+                    }
+                    
+                    // Make the API request
+                    const config: any = {
                         params,
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                            'X-AP-Context': `orgId=${orgId}`
-                        },
-                        data: filters
-                    });
+                        headers,
+                    };
+                    
+                    // Add request body only if filters are provided
+                    if (filters && Object.keys(filters).length > 0) {
+                        config.data = filters;
+                    }
+                    
+                    const response = await axios.get(apiUrl, config);
                     
                     // Process and analyze data based on endpoint
                     const result = processSearchAdsData(response.data, endpoint);
@@ -167,12 +231,36 @@ export class MyMCP extends McpAgent {
                         }] 
                     };
                 } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    console.error("Apple Search Ads API Error:", errorMessage);
+                    // Detailed error handling to help with debugging
+                    let errorInfo: any = {
+                        message: "Error fetching data from Apple Search Ads"
+                    };
+                    
+                    if (error instanceof Error) {
+                        errorInfo.errorMessage = error.message;
+                        errorInfo.stack = error.stack;
+                    }
+                    
+                    // Handle axios-specific errors to get HTTP status code and response
+                    const axiosError = error as any;
+                    if (axiosError?.response) {
+                        errorInfo.statusCode = axiosError.response.status;
+                        errorInfo.statusText = axiosError.response.statusText;
+                        errorInfo.responseData = axiosError.response.data;
+                        errorInfo.requestUrl = axiosError.config?.url;
+                        errorInfo.requestHeaders = axiosError.config?.headers;
+                    } else if (axiosError?.request) {
+                        errorInfo.requestError = "Request was made but no response received";
+                        errorInfo.requestDetails = axiosError.request;
+                    }
+                    
+                    console.error("Apple Search Ads API Error:", errorInfo);
+                    
+                    // Return detailed error info to help with debugging
                     return {
                         content: [{ 
                             type: "text", 
-                            text: `Error fetching data from Apple Search Ads: ${errorMessage}`
+                            text: JSON.stringify(errorInfo, null, 2)
                         }]
                     };
                 }
@@ -183,33 +271,56 @@ export class MyMCP extends McpAgent {
 
 // Helper function to generate JWT for Apple Search Ads API
 function generateJWT(auth: AppleSearchAdsAuth): string {
-    const now = Math.floor(Date.now() / 1000);
-    const payload = {
-        iss: auth.teamId,
-        iat: now,
-        exp: now + 3600, // Token valid for 1 hour
-        aud: 'https://appleid.apple.com',
-        sub: auth.clientId
-    };
+    try {
+        const now = Math.floor(Date.now() / 1000);
+        
+        // JWT payload according to Apple Search Ads API requirements
+        const payload = {
+            iss: auth.teamId,
+            iat: now,
+            exp: now + 3600, // Token valid for 1 hour
+            aud: 'https://appleid.apple.com',
+            sub: auth.clientId
+        };
 
-    const header = {
-        alg: 'ES256',
-        kid: auth.keyId,
-        typ: 'JWT'
-    };
-
-    const headerBase64 = Buffer.from(JSON.stringify(header)).toString('base64url');
-    const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    const signature = crypto.createSign('sha256')
-        .update(`${headerBase64}.${payloadBase64}`)
-        .sign({ key: auth.privateKey, format: 'pem' }, 'base64url');
-
-    return `${headerBase64}.${payloadBase64}.${signature}`;
+        // JWT header
+        const header = {
+            alg: 'ES256',
+            kid: auth.keyId,
+            typ: 'JWT'
+        };
+        
+        // Format the private key correctly - handle both PEM format and raw key content
+        let privateKey = auth.privateKey;
+        if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+            privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
+        }
+        
+        // Sign JWT with ES256 algorithm (ECDSA with SHA-256)
+        const headerBase64 = Buffer.from(JSON.stringify(header)).toString('base64url');
+        const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+        
+        try {
+            const signature = crypto.createSign('sha256')
+                .update(`${headerBase64}.${payloadBase64}`)
+                .sign({ key: privateKey, format: 'pem' }, 'base64url');
+            
+            return `${headerBase64}.${payloadBase64}.${signature}`;
+        } catch (signError) {
+            console.error("Error signing JWT:", signError);
+            throw new Error(`JWT signing error: ${signError instanceof Error ? signError.message : String(signError)}`);
+        }
+    } catch (error) {
+        console.error("JWT Generation Error:", error);
+        throw new Error(`JWT generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
 }
 
 // Helper function to process and analyze data based on endpoint
 function processSearchAdsData(responseData: AppleSearchAdsResponse, endpoint: string): ProcessedData {
-    const { data, pagination } = responseData;
+    // Handle different response formats from different endpoints
+    const data = responseData.data || (Array.isArray(responseData) ? responseData : [responseData]);
+    const pagination = responseData.pagination;
     
     // Basic data processing
     const processed: ProcessedData = {
@@ -221,40 +332,43 @@ function processSearchAdsData(responseData: AppleSearchAdsResponse, endpoint: st
         analysis: {}
     };
     
-    // Add endpoint-specific analysis
-    switch (endpoint) {
-        case 'campaigns':
-            processed.analysis = {
-                activeCampaigns: data.filter((c: any) => c.status === 'ACTIVE').length,
-                totalBudget: data.reduce((sum: number, c: any) => sum + (c.dailyBudget || 0), 0),
-                campaignTypes: countByProperty(data, 'campaignType')
-            };
-            break;
-        case 'keywords':
-            processed.analysis = {
-                keywordCount: data.length,
-                bidStats: calculateStats(data.map((k: any) => k.bid)),
-                matchTypes: countByProperty(data, 'matchType')
-            };
-            break;
-        case 'searchterms':
-            processed.analysis = {
-                topSearchTerms: data.slice(0, 10).map((t: any) => ({
-                    text: t.text,
-                    impressions: t.impressions,
-                    conversions: t.conversions
-                })),
-                performanceMetrics: calculateAverages(data)
-            };
-            break;
-        case 'reports':
-            processed.analysis = {
-                totalImpressions: sum(data, 'impressions'),
-                totalTaps: sum(data, 'taps'),
-                totalInstalls: sum(data, 'installs'),
-                conversionRate: average(data, 'conversionRate')
-            };
-            break;
+    // Only attempt analysis if we have data
+    if (data && data.length > 0) {
+        // Add endpoint-specific analysis
+        switch (endpoint) {
+            case 'campaigns':
+                processed.analysis = {
+                    activeCampaigns: data.filter((c: any) => c.status === 'ACTIVE').length,
+                    totalBudget: data.reduce((sum: number, c: any) => sum + (c.dailyBudget || 0), 0),
+                    campaignTypes: countByProperty(data, 'campaignType')
+                };
+                break;
+            case 'keywords':
+                processed.analysis = {
+                    keywordCount: data.length,
+                    bidStats: calculateStats(data.map((k: any) => k.bid)),
+                    matchTypes: countByProperty(data, 'matchType')
+                };
+                break;
+            case 'searchterms':
+                processed.analysis = {
+                    topSearchTerms: data.slice(0, 10).map((t: any) => ({
+                        text: t.text,
+                        impressions: t.impressions,
+                        conversions: t.conversions
+                    })),
+                    performanceMetrics: calculateAverages(data)
+                };
+                break;
+            case 'reports':
+                processed.analysis = {
+                    totalImpressions: sum(data, 'impressions'),
+                    totalTaps: sum(data, 'taps'),
+                    totalInstalls: sum(data, 'installs'),
+                    conversionRate: average(data, 'conversionRate')
+                };
+                break;
+        }
     }
     
     return processed;
@@ -271,6 +385,8 @@ function countByProperty(items: any[], property: string): Record<string, number>
 
 function calculateStats(values: number[]): { min: number, max: number, avg: number } {
     const filtered = values.filter(v => typeof v === 'number');
+    if (filtered.length === 0) return { min: 0, max: 0, avg: 0 };
+    
     return {
         min: Math.min(...filtered),
         max: Math.max(...filtered),
