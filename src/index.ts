@@ -11,7 +11,7 @@ const { FacebookAdsApi, User, AdAccount, Campaign, AdSet, Ad } = bizSdk;
 // Note: In a production environment, these values should be stored securely
 // in environment variables and not hardcoded
 const META_CONFIG = {
-    appId: "30188569360730107",
+    appId: "2505469856465943",
     // This token should be kept secure and rotated regularly
     accessToken: "EAAjmtijKRBcBO1iPgdZCGWM4cmKkn9EaIRzqqxp7mGvvWfCZClfy1OKNkaG0I0E5PsMeQluZAttWbWmLZA73ZBgNZBQAZByvzQOff6aDnyGpctfSt2ol9nnDLM0E7VnZB29Ieu0vcNtljMQOBb5Rp3RqWjqugIgNtJJEvuweOMYshkCZCSl6c3Sh5qZCHPCmjCvZCs7"
 };
