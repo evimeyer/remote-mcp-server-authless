@@ -13,7 +13,7 @@ const { FacebookAdsApi, User, AdAccount, Campaign, AdSet, Ad } = bizSdk;
 const META_CONFIG = {
     appId: "2505469856465943",
     // This token should be kept secure and rotated regularly
-    accessToken: "EAAjmtijKRBcBO1iPgdZCGWM4cmKkn9EaIRzqqxp7mGvvWfCZClfy1OKNkaG0I0E5PsMeQluZAttWbWmLZA73ZBgNZBQAZByvzQOff6aDnyGpctfSt2ol9nnDLM0E7VnZB29Ieu0vcNtljMQOBb5Rp3RqWjqugIgNtJJEvuweOMYshkCZCSl6c3Sh5qZCHPCmjCvZCs7"
+    accessToken: "EAAjmtijKRBcBOy0iWzLJLkrwve4au3h4zhJ8L5svEQYdGcZCgIbzb6mlGEoIqiUi6sl2dQZCkkfesQETJX3gD0MGjuL28ZAONV4JgeDaH4i1MgY9HNMJeWRLzLDl79nJtT45TXv9aFeOaMcsMcOb7J4bj87Ipsyfi9cruRPT5BpvnXK5BZAcrNZBGQZBtZAnBlY"
 };
 
 // Meta Ads API types
