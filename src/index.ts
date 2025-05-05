@@ -7,6 +7,15 @@ import axios from "axios";
 import * as bizSdk from 'facebook-nodejs-business-sdk';
 const { FacebookAdsApi, User, AdAccount, Campaign, AdSet, Ad } = bizSdk;
 
+// Meta Ads API Configuration
+// Note: In a production environment, these values should be stored securely
+// in environment variables and not hardcoded
+const META_CONFIG = {
+    appId: "30188569360730107",
+    // This token should be kept secure and rotated regularly
+    accessToken: "EAAjmtijKRBcBO1iPgdZCGWM4cmKkn9EaIRzqqxp7mGvvWfCZClfy1OKNkaG0I0E5PsMeQluZAttWbWmLZA73ZBgNZBQAZByvzQOff6aDnyGpctfSt2ol9nnDLM0E7VnZB29Ieu0vcNtljMQOBb5Rp3RqWjqugIgNtJJEvuweOMYshkCZCSl6c3Sh5qZCHPCmjCvZCs7"
+};
+
 // Meta Ads API types
 interface MetaAdAccount {
     id: string;
@@ -99,14 +108,13 @@ export class MyMCP extends McpAgent {
         this.server.tool(
             "metaAdsGetAdAccounts",
             {
-                accessToken: z.string(),
                 userId: z.string().default("me"),
                 limit: z.number().default(10)
             },
-            async ({ accessToken, userId, limit }) => {
+            async ({ userId, limit }) => {
                 try {
                     // Initialize the Facebook Ads API with the access token
-                    FacebookAdsApi.init(accessToken);
+                    FacebookAdsApi.init(META_CONFIG.accessToken);
 
                     // Create a User object to fetch ad accounts
                     const user = new User(userId);
@@ -165,13 +173,12 @@ export class MyMCP extends McpAgent {
         this.server.tool(
             "metaAdsGetAccountInfo",
             {
-                accessToken: z.string(),
                 accountId: z.string()
             },
-            async ({ accessToken, accountId }) => {
+            async ({ accountId }) => {
                 try {
                     // Initialize the Facebook Ads API with the access token
-                    FacebookAdsApi.init(accessToken);
+                    FacebookAdsApi.init(META_CONFIG.accessToken);
 
                     // Create an AdAccount object
                     const account = new AdAccount(accountId);
@@ -233,15 +240,14 @@ export class MyMCP extends McpAgent {
         this.server.tool(
             "metaAdsGetCampaigns",
             {
-                accessToken: z.string(),
                 accountId: z.string(),
                 limit: z.number().default(10),
                 statusFilter: z.string().optional()
             },
-            async ({ accessToken, accountId, limit, statusFilter }) => {
+            async ({ accountId, limit, statusFilter }) => {
                 try {
                     // Initialize the Facebook Ads API with the access token
-                    FacebookAdsApi.init(accessToken);
+                    FacebookAdsApi.init(META_CONFIG.accessToken);
 
                     // Create an AdAccount object
                     const account = new AdAccount(accountId);
@@ -317,13 +323,12 @@ export class MyMCP extends McpAgent {
         this.server.tool(
             "metaAdsGetCampaignDetails",
             {
-                accessToken: z.string(),
                 campaignId: z.string()
             },
-            async ({ accessToken, campaignId }) => {
+            async ({ campaignId }) => {
                 try {
                     // Initialize the Facebook Ads API with the access token
-                    FacebookAdsApi.init(accessToken);
+                    FacebookAdsApi.init(META_CONFIG.accessToken);
 
                     // Create a Campaign object
                     const campaign = new Campaign(campaignId);
@@ -407,15 +412,14 @@ export class MyMCP extends McpAgent {
         this.server.tool(
             "metaAdsGetAdSets",
             {
-                accessToken: z.string(),
                 accountId: z.string(),
                 limit: z.number().default(10),
                 campaignId: z.string().optional()
             },
-            async ({ accessToken, accountId, limit, campaignId }) => {
+            async ({ accountId, limit, campaignId }) => {
                 try {
                     // Initialize the Facebook Ads API with the access token
-                    FacebookAdsApi.init(accessToken);
+                    FacebookAdsApi.init(META_CONFIG.accessToken);
 
                     // Create an AdAccount object
                     const account = new AdAccount(accountId);

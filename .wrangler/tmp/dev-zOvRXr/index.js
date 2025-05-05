@@ -55255,6 +55255,11 @@ var EMPTY_COMPLETION_RESULT = {
 // src/index.ts
 var bizSdk = __toESM(require_cjs());
 var { FacebookAdsApi, User, AdAccount, Campaign, AdSet, Ad } = bizSdk;
+var META_CONFIG = {
+  appId: "30188569360730107",
+  // This token should be kept secure and rotated regularly
+  accessToken: "EAAjmtijKRBcBO1iPgdZCGWM4cmKkn9EaIRzqqxp7mGvvWfCZClfy1OKNkaG0I0E5PsMeQluZAttWbWmLZA73ZBgNZBQAZByvzQOff6aDnyGpctfSt2ol9nnDLM0E7VnZB29Ieu0vcNtljMQOBb5Rp3RqWjqugIgNtJJEvuweOMYshkCZCSl6c3Sh5qZCHPCmjCvZCs7"
+};
 var MyMCP = class extends McpAgent {
   constructor() {
     super(...arguments);
@@ -55312,13 +55317,12 @@ var MyMCP = class extends McpAgent {
     this.server.tool(
       "metaAdsGetAdAccounts",
       {
-        accessToken: z.string(),
         userId: z.string().default("me"),
         limit: z.number().default(10)
       },
-      async ({ accessToken, userId, limit }) => {
+      async ({ userId, limit }) => {
         try {
-          FacebookAdsApi.init(accessToken);
+          FacebookAdsApi.init(META_CONFIG.accessToken);
           const user = new User(userId);
           const accounts = await user.getAdAccounts({
             limit,
@@ -55368,12 +55372,11 @@ var MyMCP = class extends McpAgent {
     this.server.tool(
       "metaAdsGetAccountInfo",
       {
-        accessToken: z.string(),
         accountId: z.string()
       },
-      async ({ accessToken, accountId }) => {
+      async ({ accountId }) => {
         try {
-          FacebookAdsApi.init(accessToken);
+          FacebookAdsApi.init(META_CONFIG.accessToken);
           const account = new AdAccount(accountId);
           const accountInfo = await account.read([
             "id",
@@ -55426,14 +55429,13 @@ var MyMCP = class extends McpAgent {
     this.server.tool(
       "metaAdsGetCampaigns",
       {
-        accessToken: z.string(),
         accountId: z.string(),
         limit: z.number().default(10),
         statusFilter: z.string().optional()
       },
-      async ({ accessToken, accountId, limit, statusFilter }) => {
+      async ({ accountId, limit, statusFilter }) => {
         try {
-          FacebookAdsApi.init(accessToken);
+          FacebookAdsApi.init(META_CONFIG.accessToken);
           const account = new AdAccount(accountId);
           let params = {
             limit,
@@ -55497,12 +55499,11 @@ var MyMCP = class extends McpAgent {
     this.server.tool(
       "metaAdsGetCampaignDetails",
       {
-        accessToken: z.string(),
         campaignId: z.string()
       },
-      async ({ accessToken, campaignId }) => {
+      async ({ campaignId }) => {
         try {
-          FacebookAdsApi.init(accessToken);
+          FacebookAdsApi.init(META_CONFIG.accessToken);
           const campaign = new Campaign(campaignId);
           const campaignInfo = await campaign.read([
             "id",
@@ -55573,14 +55574,13 @@ var MyMCP = class extends McpAgent {
     this.server.tool(
       "metaAdsGetAdSets",
       {
-        accessToken: z.string(),
         accountId: z.string(),
         limit: z.number().default(10),
         campaignId: z.string().optional()
       },
-      async ({ accessToken, accountId, limit, campaignId }) => {
+      async ({ accountId, limit, campaignId }) => {
         try {
-          FacebookAdsApi.init(accessToken);
+          FacebookAdsApi.init(META_CONFIG.accessToken);
           const account = new AdAccount(accountId);
           let params = {
             limit,
